@@ -4,6 +4,7 @@ import (
 	"embed"
 	"encoding/json"
 	"html/template"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -18,20 +19,29 @@ var templateFS embed.FS
 type Handler struct {
 	store     store.Store
 	cfg       *config.Config
-	templates *template.Template
+	templates map[string]*template.Template
 }
 
 // NewHandler creates a new web handler
 func NewHandler(s store.Store, cfg *config.Config) (*Handler, error) {
-	tmpl, err := template.ParseFS(templateFS, "templates/*.html")
-	if err != nil {
-		return nil, err
+	templates := make(map[string]*template.Template)
+
+	// Parse base template
+	base := template.Must(template.ParseFS(templateFS, "templates/base.html"))
+
+	// Parse each page template with its own clone of base
+	pages := []string{"home.html", "story.html", "submit.html"}
+	for _, page := range pages {
+		// Clone base for each page to avoid block conflicts
+		tmpl := template.Must(base.Clone())
+		template.Must(tmpl.ParseFS(templateFS, "templates/"+page))
+		templates[page] = tmpl
 	}
 
 	return &Handler{
 		store:     s,
 		cfg:       cfg,
-		templates: tmpl,
+		templates: templates,
 	}, nil
 }
 
@@ -106,7 +116,9 @@ func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	h.templates.ExecuteTemplate(w, "home.html", data)
+	if err := h.templates["home.html"].ExecuteTemplate(w, "base", data); err != nil {
+		log.Printf("Template error: %v", err)
+	}
 }
 
 // Story handles GET /story/{id}
@@ -152,7 +164,9 @@ func (h *Handler) Story(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	h.templates.ExecuteTemplate(w, "story.html", data)
+	if err := h.templates["story.html"].ExecuteTemplate(w, "base", data); err != nil {
+		log.Printf("Template error: %v", err)
+	}
 }
 
 // Submit handles GET /submit
@@ -195,7 +209,9 @@ func (h *Handler) Submit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	h.templates.ExecuteTemplate(w, "submit.html", data)
+	if err := h.templates["submit.html"].ExecuteTemplate(w, "base", data); err != nil {
+		log.Printf("Template error: %v", err)
+	}
 }
 
 // Helper functions

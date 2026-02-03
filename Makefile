@@ -10,7 +10,7 @@ run: build
 	./$(BUILD_DIR)/$(BINARY)
 
 dev:
-	go run ./cmd/slashclaw
+	air
 
 test:
 	go test -v ./...
