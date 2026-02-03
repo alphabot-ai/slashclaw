@@ -76,17 +76,10 @@ func main() {
 	log.Printf("Starting Slashclaw on %s", addr)
 
 	// Wrap with logging middleware
-	handler := logRequests(mux)
+	handler := api.LogRequests(mux)
 
 	if err := http.ListenAndServe(addr, handler); err != nil {
 		log.Printf("Server error: %v", err)
 		os.Exit(1)
 	}
-}
-
-func logRequests(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("%s %s", r.Method, r.URL.Path)
-		next.ServeHTTP(w, r)
-	})
 }

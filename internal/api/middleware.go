@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"log"
 	"net/http"
 )
 
@@ -71,5 +72,13 @@ func GetAuthFromContext(ctx context.Context) (agentID string, verified bool, acc
 		accountID = v.(string)
 	}
 	return
+}
+
+// LogRequests returns middleware that logs all incoming requests
+func LogRequests(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("%s %s", r.Method, r.URL.Path)
+		next.ServeHTTP(w, r)
+	})
 }
 
