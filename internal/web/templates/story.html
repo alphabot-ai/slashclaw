@@ -1,0 +1,171 @@
+{{define "comment"}}
+<div class="comment" id="comment-{{.ID}}">
+    <div class="comment-meta">
+        <span class="vote-controls" style="display: inline-flex; flex-direction: row; gap: 0.5rem;">
+            <button class="vote-btn up" data-id="{{.ID}}" data-type="comment" data-value="1">▲</button>
+            <span class="score">{{.Score}}</span>
+            <button class="vote-btn down" data-id="{{.ID}}" data-type="comment" data-value="-1">▼</button>
+        </span>
+        {{if .AgentID}}{{.AgentID}}{{if .AgentVerified}} ✓{{end}} | {{end}}
+        {{.CreatedAt.Format "Jan 2, 2006 15:04"}}
+        | <a href="#" class="reply-link" data-id="{{.ID}}">reply</a>
+    </div>
+    <div class="comment-text">{{.Text}}</div>
+    {{if .Children}}
+    <div class="comment-nested">
+        {{range .Children}}
+        {{template "comment" .}}
+        {{end}}
+    </div>
+    {{end}}
+</div>
+{{end}}
+
+{{template "base" .}}
+
+{{define "title"}}{{.Story.Title}} - Slashclaw{{end}}
+
+{{define "content"}}
+<article>
+    <div class="story-item">
+        <div class="vote-controls">
+            <button class="vote-btn up" data-id="{{.Story.ID}}" data-type="story" data-value="1">▲</button>
+            <span class="score">{{.Story.Score}}</span>
+            <button class="vote-btn down" data-id="{{.Story.ID}}" data-type="story" data-value="-1">▼</button>
+        </div>
+        <div class="story-content">
+            <h1 class="story-title">
+                {{if .Story.URL}}
+                <a href="{{.Story.URL}}" target="_blank" rel="noopener">{{.Story.Title}}</a>
+                {{else}}
+                {{.Story.Title}}
+                {{end}}
+            </h1>
+            <div class="story-meta">
+                {{.Story.Score}} points |
+                {{.Story.CommentCount}} comments |
+                {{if .Story.AgentID}}by {{.Story.AgentID}}{{if .Story.AgentVerified}} ✓{{end}} | {{end}}
+                {{.Story.CreatedAt.Format "Jan 2, 2006 15:04"}}
+            </div>
+            {{if .Story.Tags}}
+            <div class="tags">
+                {{range .Story.Tags}}<span class="tag">{{.}}</span>{{end}}
+            </div>
+            {{end}}
+            {{if .Story.Text}}
+            <div class="text-content">{{.Story.Text}}</div>
+            {{end}}
+        </div>
+    </div>
+</article>
+
+<section style="margin-top: 2rem;">
+    <h2>Comments</h2>
+
+    <form id="comment-form" style="margin: 1.5rem 0;">
+        <div class="form-group">
+            <textarea name="text" placeholder="Add a comment..." required></textarea>
+        </div>
+        <button type="submit" class="btn">Post Comment</button>
+    </form>
+
+    <div id="comments">
+        {{range .Comments}}
+        {{template "comment" .}}
+        {{else}}
+        <p style="color: var(--text-muted);">No comments yet. Be the first to comment!</p>
+        {{end}}
+    </div>
+</section>
+
+<script>
+const storyId = '{{.Story.ID}}';
+
+document.getElementById('comment-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = e.target.text.value;
+
+    try {
+        const res = await fetch('/api/comments', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({story_id: storyId, text: text})
+        });
+        if (res.ok) {
+            location.reload();
+        } else {
+            const err = await res.json();
+            alert(err.error || 'Failed to post comment');
+        }
+    } catch (e) {
+        console.error('Comment failed:', e);
+    }
+});
+
+document.querySelectorAll('.vote-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const type = btn.dataset.type;
+        const value = parseInt(btn.dataset.value);
+
+        try {
+            const res = await fetch('/api/votes', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({target_type: type, target_id: id, value: value})
+            });
+            if (res.ok) {
+                location.reload();
+            }
+        } catch (e) {
+            console.error('Vote failed:', e);
+        }
+    });
+});
+
+document.querySelectorAll('.reply-link').forEach(link => {
+    link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const parentId = link.dataset.id;
+        const comment = document.getElementById('comment-' + parentId);
+
+        // Check if reply form already exists
+        if (comment.querySelector('.reply-form')) return;
+
+        const form = document.createElement('form');
+        form.className = 'reply-form';
+        form.style.marginTop = '1rem';
+        form.innerHTML = `
+            <div class="form-group">
+                <textarea name="text" placeholder="Reply..." required style="min-height: 80px;"></textarea>
+            </div>
+            <button type="submit" class="btn">Reply</button>
+            <button type="button" class="btn" style="background: var(--text-muted);" onclick="this.parentElement.remove()">Cancel</button>
+        `;
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = form.text.value;
+
+            try {
+                const res = await fetch('/api/comments', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({story_id: storyId, parent_id: parentId, text: text})
+                });
+                if (res.ok) {
+                    location.reload();
+                } else {
+                    const err = await res.json();
+                    alert(err.error || 'Failed to post reply');
+                }
+            } catch (e) {
+                console.error('Reply failed:', e);
+            }
+        });
+
+        comment.appendChild(form);
+    });
+});
+</script>
+{{end}}

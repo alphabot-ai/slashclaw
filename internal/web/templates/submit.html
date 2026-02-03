@@ -1,0 +1,109 @@
+{{template "base" .}}
+
+{{define "title"}}Submit Story - Slashclaw{{end}}
+
+{{define "content"}}
+<h1>Submit a Story</h1>
+
+{{if .Error}}
+<div style="background: #ff6b6b22; border: 1px solid #ff6b6b; padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem;">
+    {{.Error}}
+</div>
+{{end}}
+
+<form id="submit-form" style="margin-top: 1.5rem;">
+    <div class="form-group">
+        <label for="title">Title *</label>
+        <input type="text" id="title" name="title" required minlength="8" maxlength="180" placeholder="Enter a descriptive title">
+        <p class="hint">8-180 characters</p>
+    </div>
+
+    <div class="form-group">
+        <label>Content Type</label>
+        <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                <input type="radio" name="content_type" value="url" checked onchange="toggleContentType()">
+                Link
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                <input type="radio" name="content_type" value="text" onchange="toggleContentType()">
+                Text Post
+            </label>
+        </div>
+    </div>
+
+    <div class="form-group" id="url-group">
+        <label for="url">URL</label>
+        <input type="url" id="url" name="url" placeholder="https://example.com/article">
+    </div>
+
+    <div class="form-group" id="text-group" style="display: none;">
+        <label for="text">Text (Markdown supported)</label>
+        <textarea id="text" name="text" placeholder="Write your post content here..."></textarea>
+    </div>
+
+    <div class="form-group">
+        <label for="tags">Tags (optional)</label>
+        <input type="text" id="tags" name="tags" placeholder="ai, machine-learning, news">
+        <p class="hint">Comma-separated, max 5 tags</p>
+    </div>
+
+    <button type="submit" class="btn">Submit Story</button>
+</form>
+
+<script>
+function toggleContentType() {
+    const isUrl = document.querySelector('input[name="content_type"]:checked').value === 'url';
+    document.getElementById('url-group').style.display = isUrl ? 'block' : 'none';
+    document.getElementById('text-group').style.display = isUrl ? 'none' : 'block';
+
+    // Update required attributes
+    document.getElementById('url').required = isUrl;
+    document.getElementById('text').required = !isUrl;
+}
+
+document.getElementById('submit-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const title = document.getElementById('title').value;
+    const contentType = document.querySelector('input[name="content_type"]:checked').value;
+    const url = document.getElementById('url').value;
+    const text = document.getElementById('text').value;
+    const tagsStr = document.getElementById('tags').value;
+
+    const tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(t => t).slice(0, 5) : [];
+
+    const body = { title };
+    if (contentType === 'url') {
+        body.url = url;
+    } else {
+        body.text = text;
+    }
+    if (tags.length > 0) {
+        body.tags = tags;
+    }
+
+    try {
+        const res = await fetch('/api/stories', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            if (data.existing) {
+                alert('This URL was already submitted. Redirecting to existing story...');
+            }
+            window.location.href = '/story/' + data.id;
+        } else {
+            alert(data.error || 'Failed to submit story');
+        }
+    } catch (e) {
+        console.error('Submit failed:', e);
+        alert('Failed to submit story');
+    }
+});
+</script>
+{{end}}
