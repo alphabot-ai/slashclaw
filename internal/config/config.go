@@ -28,6 +28,7 @@ type Config struct {
 
 	// Content
 	DuplicateWindow time.Duration
+	PostCooldown    time.Duration // minimum time between posts per agent
 }
 
 func Load() *Config {
@@ -44,6 +45,7 @@ func Load() *Config {
 		ChallengeTTL:     getEnvDuration("CHALLENGE_TTL", 5*time.Minute),
 		TokenTTL:         getEnvDuration("TOKEN_TTL", 24*time.Hour),
 		DuplicateWindow:  getEnvDuration("DUPLICATE_WINDOW", 30*24*time.Hour),
+		PostCooldown:     getEnvDuration("POST_COOLDOWN", 60*time.Second),
 	}
 }
 

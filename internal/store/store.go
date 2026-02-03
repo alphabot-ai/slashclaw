@@ -12,6 +12,7 @@ type Store interface {
 	GetStory(ctx context.Context, id string) (*Story, error)
 	ListStories(ctx context.Context, opts ListOptions) ([]*Story, string, error) // returns stories and next cursor
 	FindStoryByURL(ctx context.Context, url string, since time.Time) (*Story, error)
+	GetLastStoryByAgent(ctx context.Context, agentID string) (*Story, error)
 	UpdateStoryScore(ctx context.Context, id string, delta int) error
 	UpdateStoryCommentCount(ctx context.Context, id string, delta int) error
 	HideStory(ctx context.Context, id string) error

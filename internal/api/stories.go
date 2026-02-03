@@ -87,13 +87,27 @@ func (h *Handler) CreateStory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get auth info
-	token, _ := h.validateToken(r)
-	agentID := h.getAgentID(r)
-	agentVerified := token != nil
+	// Get auth info from context (set by RequireAuth middleware)
+	agentID, agentVerified, _ := GetAuthFromContext(r.Context())
 
-	if token != nil && agentID == "" {
-		agentID = token.AgentID
+	// Check post cooldown
+	if agentID != "" {
+		lastStory, err := h.store.GetLastStoryByAgent(r.Context(), agentID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "database error")
+			return
+		}
+		if lastStory != nil {
+			elapsed := time.Since(lastStory.CreatedAt)
+			if elapsed < h.cfg.PostCooldown {
+				remaining := int((h.cfg.PostCooldown - elapsed).Seconds())
+				writeJSON(w, http.StatusTooManyRequests, ErrorResponse{
+					Error:      "please wait before posting again",
+					RetryAfter: remaining,
+				})
+				return
+			}
+		}
 	}
 
 	// Create the story

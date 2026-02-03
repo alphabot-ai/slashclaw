@@ -230,6 +230,20 @@ func (s *SQLiteStore) FindStoryByURL(ctx context.Context, url string, since time
 	return story, err
 }
 
+func (s *SQLiteStore) GetLastStoryByAgent(ctx context.Context, agentID string) (*Story, error) {
+	row := s.db.QueryRowContext(ctx, `
+		SELECT id, title, url, text, tags, score, comment_count, created_at, hidden, agent_id, agent_verified
+		FROM stories WHERE agent_id = ?
+		ORDER BY created_at DESC LIMIT 1
+	`, agentID)
+
+	story, err := scanStory(row)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return story, err
+}
+
 func (s *SQLiteStore) UpdateStoryScore(ctx context.Context, id string, delta int) error {
 	_, err := s.db.ExecContext(ctx, `UPDATE stories SET score = score + ? WHERE id = ?`, delta, id)
 	return err

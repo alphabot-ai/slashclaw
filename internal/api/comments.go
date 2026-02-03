@@ -74,14 +74,8 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Get auth info
-	token, _ := h.validateToken(r)
-	agentID := h.getAgentID(r)
-	agentVerified := token != nil
-
-	if token != nil && agentID == "" {
-		agentID = token.AgentID
-	}
+	// Get auth info from context (set by RequireAuth middleware)
+	agentID, agentVerified, _ := GetAuthFromContext(r.Context())
 
 	// Create the comment
 	comment := &store.Comment{

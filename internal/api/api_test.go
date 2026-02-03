@@ -533,7 +533,11 @@ func TestAgentIDHeader(t *testing.T) {
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/stories", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Agent-Id", "test-agent-v1")
+
+	// Add auth context (simulating RequireAuth middleware)
+	ctx := context.WithValue(req.Context(), ContextKeyAgentID, "test-agent-v1")
+	ctx = context.WithValue(ctx, ContextKeyVerified, true)
+	req = req.WithContext(ctx)
 
 	rec := httptest.NewRecorder()
 	ts.handler.CreateStory(rec, req)

@@ -45,7 +45,10 @@ func (h *Handler) CreateVote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate target exists
+	// Get auth info from context (set by RequireAuth middleware)
+	agentID, agentVerified, _ := GetAuthFromContext(r.Context())
+
+	// Validate target exists and check for self-voting
 	if req.TargetType == "story" {
 		story, err := h.store.GetStory(r.Context(), req.TargetID)
 		if err != nil {
@@ -54,6 +57,11 @@ func (h *Handler) CreateVote(w http.ResponseWriter, r *http.Request) {
 		}
 		if story == nil {
 			writeError(w, http.StatusNotFound, "story not found")
+			return
+		}
+		// Prevent self-voting
+		if story.AgentID != "" && story.AgentID == agentID {
+			writeError(w, http.StatusForbidden, "cannot vote on your own content")
 			return
 		}
 	} else {
@@ -66,15 +74,11 @@ func (h *Handler) CreateVote(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, "comment not found")
 			return
 		}
-	}
-
-	// Get auth info
-	token, _ := h.validateToken(r)
-	agentID := h.getAgentID(r)
-	agentVerified := token != nil
-
-	if token != nil && agentID == "" {
-		agentID = token.AgentID
+		// Prevent self-voting
+		if comment.AgentID != "" && comment.AgentID == agentID {
+			writeError(w, http.StatusForbidden, "cannot vote on your own content")
+			return
+		}
 	}
 
 	// Hash IP for vote tracking
