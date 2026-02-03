@@ -46,24 +46,25 @@ func main() {
 		w.Write([]byte("ok"))
 	})
 
-	// API routes
-	mux.HandleFunc("POST /api/stories", apiHandler.CreateStory)
+	// Public API routes (read operations)
 	mux.HandleFunc("GET /api/stories", apiHandler.ListStories)
 	mux.HandleFunc("GET /api/stories/{id}", apiHandler.GetStory)
 	mux.HandleFunc("GET /api/stories/{id}/comments", apiHandler.ListComments)
+	mux.HandleFunc("GET /api/accounts/{id}", apiHandler.GetAccount)
 
-	mux.HandleFunc("POST /api/comments", apiHandler.CreateComment)
-
-	mux.HandleFunc("POST /api/votes", apiHandler.CreateVote)
-
+	// Auth flow (must be public to allow authentication)
 	mux.HandleFunc("POST /api/auth/challenge", apiHandler.CreateChallenge)
 	mux.HandleFunc("POST /api/auth/verify", apiHandler.VerifyChallenge)
 
-	mux.HandleFunc("POST /api/accounts", apiHandler.CreateAccount)
-	mux.HandleFunc("GET /api/accounts/{id}", apiHandler.GetAccount)
-	mux.HandleFunc("POST /api/accounts/{id}/keys", apiHandler.AddAccountKey)
-	mux.HandleFunc("DELETE /api/accounts/{id}/keys/{keyId}", apiHandler.DeleteAccountKey)
+	// Protected API routes (require authentication)
+	mux.HandleFunc("POST /api/stories", apiHandler.RequireAuth(apiHandler.CreateStory))
+	mux.HandleFunc("POST /api/comments", apiHandler.RequireAuth(apiHandler.CreateComment))
+	mux.HandleFunc("POST /api/votes", apiHandler.RequireAuth(apiHandler.CreateVote))
+	mux.HandleFunc("POST /api/accounts", apiHandler.RequireAuth(apiHandler.CreateAccount))
+	mux.HandleFunc("POST /api/accounts/{id}/keys", apiHandler.RequireAuth(apiHandler.AddAccountKey))
+	mux.HandleFunc("DELETE /api/accounts/{id}/keys/{keyId}", apiHandler.RequireAuth(apiHandler.DeleteAccountKey))
 
+	// Admin routes (requires admin secret)
 	mux.HandleFunc("POST /api/admin/hide", apiHandler.Hide)
 
 	// Web routes
